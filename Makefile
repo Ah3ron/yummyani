@@ -1,12 +1,12 @@
-BINARY  := yummyani
-VERSION := 1.0.0
-SRC     := ./cmd/yummyani
-PREFIX  ?= /usr/local
+BINARY   := yummyani
+VERSION  := 2.0.0
+SRC      := ./cmd/yummyani
+PREFIX   ?= /usr/local
 
-.PHONY: build run clean install uninstall lint fmt test archive help
+.PHONY: build run clean install uninstall lint fmt vet test archive help
 
 build: ## Build binary
-	go build -ldflags "-s -w" -o $(BINARY) $(SRC)
+	go build -ldflags "-s -w -X main.version=$(VERSION)" -o $(BINARY) $(SRC)
 
 run: build ## Build and run
 	./$(BINARY)
@@ -20,14 +20,21 @@ install: build ## Install to PREFIX (default /usr/local)
 uninstall: ## Remove installed binary
 	rm -f $(DESTDIR)$(PREFIX)/bin/$(BINARY)
 
-lint: ## Run vet
+lint: vet ## Run all linters (vet only — extend with staticcheck)
+
+vet: ## Run go vet
 	go vet ./...
 
-fmt: ## Format code
+fmt: ## Format code with gofmt
 	gofmt -w .
+	@if command -v gofumpt >/dev/null 2>&1; then gofumpt -w .; fi
 
-test: ## Run tests
-	go test -v -race ./...
+test: ## Run all tests with race detector
+	go test -v -race -count=1 ./...
+
+cover: ## Run tests and generate coverage report
+	go test -race -coverprofile=coverage.out ./...
+	go tool cover -html=coverage.out -o coverage.html
 
 archive: build ## Create tar.gz archive
 	tar czf ./$(BINARY).tar.gz -C .. \
@@ -40,4 +47,4 @@ archive: build ## Create tar.gz archive
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
-		awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m            \033[0m \n", $$1, $$2}'
+		awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-10s\033[0m %s\n", $$1, $$2}'
