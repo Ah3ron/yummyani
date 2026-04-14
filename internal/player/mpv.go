@@ -42,11 +42,8 @@ func buildMPVArgs(title, videoURL string) []string {
 	return []string{
 		"--title=" + title,
 		"--force-media-title=" + title,
-		"--no-terminal",
-		"--msg-level=all=error",
 		"--force-seekable=yes",
 		"--http-header-fields=Referer: https://kodikplayer.com/",
-		"--vo=gpu",
 		"--cache=yes",
 		"--demuxer-max-bytes=150M",
 		"--demuxer-max-back-bytes=75M",
@@ -60,11 +57,6 @@ func buildMPVArgs(title, videoURL string) []string {
 		"--video-sync=audio",
 		"--framedrop=vo",
 		"--vd-lavc-threads=0",
-		"--deband=no",
-		"--interpolation=no",
-		"--sub-auto=no",
-		"--osd-level=0",
-		"--idle=no",
 		videoURL,
 	}
 }
