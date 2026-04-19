@@ -6,25 +6,22 @@ import (
 	"net/http"
 	"net/http/cookiejar"
 	"strings"
+	"sync"
 	"time"
 )
 
-// LinkExtractor defines the interface for extracting video links from Kodik.
-// Implementations may be the real parser or a test mock.
 type LinkExtractor interface {
-	// Parse extracts direct video URLs from a Kodik player page URL.
 	Parse(ctx context.Context, rawURL string) (*Response, error)
+	Prefetch(ctx context.Context, urls []string)
 }
 
-// Parser bundles an HTTP client and configuration for extracting video URLs
-// from Kodik player pages. Use [NewParser] to create one.
 type Parser struct {
 	client      *http.Client
 	userAgent   string
 	maxAttempts int
 	httpGet     HTTPGetFunc
 	cachedPath  string
-	caesarShift uint8
+	prefetch    sync.Map
 }
 
 // ParserOption configures a [Parser].
@@ -82,19 +79,20 @@ func NewParser(opts ...ParserOption) *Parser {
 	return p
 }
 
-// Parse extracts direct video URLs from a Kodik player page URL.
 func (p *Parser) Parse(ctx context.Context, rawURL string) (*Response, error) {
 	if !strings.HasPrefix(rawURL, "http") {
 		rawURL = "https://" + rawURL
 	}
 
-	// Step 1: extract domain.
+	if cached, ok := p.prefetch.Load(rawURL); ok {
+		return cached.(*Response), nil
+	}
+
 	domain, err := extractDomain(rawURL)
 	if err != nil {
 		return nil, fmt.Errorf("extract domain: %w", err)
 	}
 
-	// Step 2: fetch page and extract video info from HTML.
 	pageHTML, err := p.httpGet(ctx, rawURL)
 	if err != nil {
 		return nil, fmt.Errorf("fetch page: %w", err)
@@ -108,7 +106,6 @@ func (p *Parser) Parse(ctx context.Context, rawURL string) (*Response, error) {
 		return nil, fmt.Errorf("extract video info: %w", err)
 	}
 
-	// Steps 3–4: discover endpoint and POST (with retry).
 	var resp *Response
 	for attempt := 0; attempt < p.maxAttempts; attempt++ {
 		if p.cachedPath != "" {
@@ -116,11 +113,11 @@ func (p *Parser) Parse(ctx context.Context, rawURL string) (*Response, error) {
 			if err == nil {
 				resp, err = parseKodikResponse(body)
 				if err == nil {
-					decodeLinks(resp, p.caesarShift)
+					decodeLinks(resp)
 					return resp, nil
 				}
 			}
-			p.cachedPath = "" // clear stale endpoint
+			p.cachedPath = ""
 			continue
 		}
 
@@ -129,33 +126,29 @@ func (p *Parser) Parse(ctx context.Context, rawURL string) (*Response, error) {
 			return nil, fmt.Errorf("discover endpoint (attempt %d): %w", attempt+1, err)
 		}
 		p.cachedPath = endpoint
-		// Loop back to try POST with the new endpoint.
 	}
 
 	return nil, fmt.Errorf("failed after %d attempts to get video links", p.maxAttempts)
 }
 
-// parseKodikResponse unmarshals JSON and decodes links.
+func (p *Parser) Prefetch(ctx context.Context, urls []string) {
+	var wg sync.WaitGroup
+	for _, url := range urls {
+		wg.Add(1)
+		go func(u string) {
+			defer wg.Done()
+			if resp, err := p.Parse(ctx, u); err == nil {
+				p.prefetch.Store(u, resp)
+			}
+		}(url)
+	}
+	wg.Wait()
+}
+
 func parseKodikResponse(body []byte) (*Response, error) {
 	var resp Response
 	if err := unmarshalLinks(body, &resp); err != nil {
 		return nil, fmt.Errorf("parse response: %w", err)
 	}
 	return &resp, nil
-}
-
-// NewHTTPClient creates a standalone HTTP client for Kodik requests.
-// Useful for consumers that need a plain client without the Parser.
-func NewHTTPClient(timeout time.Duration) *http.Client {
-	jar, _ := cookiejar.New(nil)
-	return &http.Client{
-		Jar:     jar,
-		Timeout: timeout,
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			if len(via) >= 10 {
-				return fmt.Errorf("too many redirects")
-			}
-			return nil
-		},
-	}
 }

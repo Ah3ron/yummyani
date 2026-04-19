@@ -10,22 +10,12 @@ import (
 	"yummyani/pkg/fuzzy"
 )
 
-// FilterItem is a single selectable item in the filter list.
 type FilterItem struct {
 	ID    int
 	Label string
 	Sub   string
 }
 
-// FzfFilter is a reusable fzf-like incremental filter component.
-//
-// Features:
-//   - Type to filter items in real time (fuzzy match)
-//   - Arrow keys / Ctrl+J,K,P,N to navigate
-//   - Ctrl+U to clear input
-//   - Esc passed through to parent (for back navigation)
-//   - Scrollable list when items exceed visible area
-//   - Original numbering preserved when filtering
 type FzfFilter struct {
 	items    []FilterItem
 	filtered []FilterItem
@@ -36,7 +26,6 @@ type FzfFilter struct {
 	width    int
 }
 
-// NewFzfFilter creates a filter with the given prompt string.
 func NewFzfFilter(prompt string) FzfFilter {
 	ti := textinput.New()
 	ti.Prompt = prompt
@@ -52,7 +41,6 @@ func NewFzfFilter(prompt string) FzfFilter {
 	}
 }
 
-// Reset atomically clears the input and sets new items.
 func (f *FzfFilter) Reset(items []FilterItem) {
 	f.input.SetValue("")
 	f.items = items
@@ -65,22 +53,18 @@ func (f *FzfFilter) Reset(items []FilterItem) {
 	}
 }
 
-// SetPrompt changes the input prompt.
 func (f *FzfFilter) SetPrompt(p string) {
 	f.input.Prompt = p
 }
 
-// SetPlaceholder changes the placeholder text.
 func (f *FzfFilter) SetPlaceholder(p string) {
 	f.input.Placeholder = p
 }
 
-// Value returns the trimmed input text.
 func (f *FzfFilter) Value() string {
 	return strings.TrimSpace(f.input.Value())
 }
 
-// Selected returns the currently highlighted item, or nil.
 func (f *FzfFilter) Selected() *FilterItem {
 	if len(f.filtered) == 0 || f.cursor < 0 || f.cursor >= len(f.filtered) {
 		return nil
@@ -88,35 +72,29 @@ func (f *FzfFilter) Selected() *FilterItem {
 	return &f.filtered[f.cursor]
 }
 
-// Len returns the number of currently filtered items.
-func (f *FzfFilter) Len() int {
-	return len(f.filtered)
-}
-
-// SetMaxLines sets how many items are visible at once.
 func (f *FzfFilter) SetMaxLines(n int) {
 	if n > 0 {
 		f.maxLines = n
 	}
 }
 
-// SetWidth sets the terminal width for background rendering.
 func (f *FzfFilter) SetWidth(w int) {
 	f.width = w
 }
 
-// Init returns the initial command (cursor blink).
 func (f FzfFilter) Init() tea.Cmd {
 	return textinput.Blink
 }
 
-// Update handles key events for the filter.
 func (f FzfFilter) Update(msg tea.Msg) (FzfFilter, tea.Cmd) {
 	key, ok := msg.(tea.KeyMsg)
 	if !ok {
 		return f, nil
 	}
+	return f.handleKey(key)
+}
 
+func (f FzfFilter) handleKey(key tea.KeyMsg) (FzfFilter, tea.Cmd) {
 	switch key.String() {
 	case "up", "ctrl+k", "ctrl+p":
 		if f.cursor > 0 {
@@ -140,7 +118,7 @@ func (f FzfFilter) Update(msg tea.Msg) (FzfFilter, tea.Cmd) {
 	}
 
 	var cmd tea.Cmd
-	f.input, cmd = f.input.Update(msg)
+	f.input, cmd = f.input.Update(key)
 	f.refilter()
 
 	if len(f.filtered) > 0 && f.cursor >= len(f.filtered) {
@@ -150,23 +128,20 @@ func (f FzfFilter) Update(msg tea.Msg) (FzfFilter, tea.Cmd) {
 	return f, cmd
 }
 
-// View renders the textinput line with a full-width background.
 func (f FzfFilter) View() string {
 	input := f.input.View()
-	if f.width <= 0 {
-		return filterStyle.Render(input)
+	if f.width > 0 {
+		return filterStyle.Width(f.width).Render(input)
 	}
-	// Fill the entire width with background so no gaps remain.
-	return filterStyle.Width(f.width).Render(input)
+	return filterStyle.Render(input)
 }
 
-// ViewItems renders the scrollable filtered list with cursor indicator.
 func (f FzfFilter) ViewItems() string {
 	if len(f.filtered) == 0 {
 		if len(f.items) == 0 {
 			return ""
 		}
-		return "  " + dimStyle.Render("нет результатов")
+		return dimStyle.Render("  нет результатов")
 	}
 
 	maxL := f.maxLines
@@ -174,7 +149,6 @@ func (f FzfFilter) ViewItems() string {
 		maxL = 20
 	}
 
-	// Scrolling.
 	offset := 0
 	if f.cursor >= offset+maxL {
 		offset = f.cursor - maxL + 1
@@ -187,7 +161,6 @@ func (f FzfFilter) ViewItems() string {
 	numW := max(len(fmt.Sprintf("%d", len(f.items))), 2)
 
 	var b strings.Builder
-	b.WriteString("\n")
 
 	for i := offset; i < end; i++ {
 		item := f.filtered[i]
@@ -199,20 +172,19 @@ func (f FzfFilter) ViewItems() string {
 		}
 
 		if i == f.cursor {
-			b.WriteString("  " + accentStyle.Render("▸") + " " + accentStyle.Render(num) + " " + accentStyle.Render(item.Label) + sub + "\n")
+			b.WriteString(accentStyle.Render("▸ ") + accentStyle.Render(num) + " " + itemSelStyle.Render(item.Label) + sub + "\n")
 		} else {
-			b.WriteString("    " + dimStyle.Render(num) + " " + normalStyle.Render(item.Label) + sub + "\n")
+			b.WriteString("  " + dimStyle.Render(num) + " " + itemNormStyle.Render(item.Label) + sub + "\n")
 		}
 	}
 
 	if len(f.filtered) != len(f.items) && len(f.items) > 0 {
-		b.WriteString("\n  " + dimStyle.Render(fmt.Sprintf("%d/%d", len(f.filtered), len(f.items))))
+		b.WriteString(dimStyle.Render(fmt.Sprintf("  %d/%d", len(f.filtered), len(f.items))))
 	}
 
-	return listStyle.Render(b.String())
+	return b.String()
 }
 
-// refilter rebuilds f.filtered based on the current input value.
 func (f *FzfFilter) refilter() {
 	query := strings.ToLower(strings.TrimSpace(f.input.Value()))
 	if query == "" {

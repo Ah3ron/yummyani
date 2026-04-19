@@ -3,16 +3,48 @@ package kodik
 import (
 	"encoding/base64"
 	"strings"
+	"sync"
 	"unicode/utf8"
 )
 
 const alphabetSize = 26
 
-// decodeLinks decodes all links in the response using Caesar cipher + Base64.
-// 360p links are decoded directly. Higher qualities are derived from 360p
-// by path substitution when possible (avoids re-brute-forcing the shift).
-func decodeLinks(resp *Response, shift uint8) {
-	base360 := decodeLinkSlice(resp.Links.Quality360, &shift)
+var (
+	shiftCache   uint8
+	shiftCachSet bool
+	shiftMu      sync.Mutex
+)
+
+func getCachedShift() uint8 {
+	shiftMu.Lock()
+	defer shiftMu.Unlock()
+	return shiftCache
+}
+
+func setCachedShift(s uint8) {
+	shiftMu.Lock()
+	defer shiftMu.Unlock()
+	shiftCache = s
+	shiftCachSet = true
+}
+
+func decodeLinks(resp *Response) {
+	shift := getCachedShift()
+	base360 := decodeLinkSlice(resp.Links.Quality360, shift)
+
+	if shiftCachSet {
+		for _, entry := range []struct {
+			links   []Link
+			quality string
+		}{
+			{resp.Links.Quality480, "480"},
+			{resp.Links.Quality720, "720"},
+			{resp.Links.Quality1080, "1080"},
+		} {
+			deriveOrDecode(entry.links, base360, entry.quality, shift)
+		}
+		return
+	}
 
 	for _, entry := range []struct {
 		links   []Link
@@ -22,12 +54,12 @@ func decodeLinks(resp *Response, shift uint8) {
 		{resp.Links.Quality720, "720"},
 		{resp.Links.Quality1080, "1080"},
 	} {
-		deriveOrDecode(entry.links, base360, entry.quality, &shift)
+		deriveOrDecode(entry.links, base360, entry.quality, shift)
 	}
+	setCachedShift(shift)
 }
 
-// decodeLinkSlice decodes all links in a slice, returns first decoded URL.
-func decodeLinkSlice(links []Link, shift *uint8) string {
+func decodeLinkSlice(links []Link, shift uint8) string {
 	for i := range links {
 		links[i].Src = decodeLink(links[i].Src, shift)
 	}
@@ -37,8 +69,7 @@ func decodeLinkSlice(links []Link, shift *uint8) string {
 	return ""
 }
 
-// deriveOrDecode substitutes quality in 360p URL, or decodes directly.
-func deriveOrDecode(links []Link, base360, quality string, shift *uint8) {
+func deriveOrDecode(links []Link, base360, quality string, shift uint8) {
 	for i := range links {
 		if base360 != "" {
 			links[i].Src = strings.Replace(base360, "/360.mp4", "/"+quality+".mp4", 1)
@@ -48,13 +79,16 @@ func deriveOrDecode(links []Link, base360, quality string, shift *uint8) {
 	}
 }
 
-// decodeLink decodes a single Caesar-shifted Base64 URL.
-// It brute-forces all 27 possible shifts (0–26).
-func decodeLink(src string, shift *uint8) string {
+func decodeLink(src string, shift uint8) string {
+	if shiftCachSet {
+		if result, ok := tryDecode(src, shift); ok {
+			return ensureScheme(result)
+		}
+	}
 	for s := uint8(0); s <= uint8(alphabetSize); s++ {
 		result, ok := tryDecode(src, s)
 		if ok {
-			*shift = s
+			setCachedShift(s)
 			return ensureScheme(result)
 		}
 	}

@@ -1,86 +1,57 @@
-// Package tui implements the BubbleTea TUI for the YummyAnime player.
-//
-// It provides a multi-screen interface: search → results → dubbing →
-// episodes → quality → playback, with fuzzy filtering on each screen.
 package tui
 
 import "github.com/charmbracelet/lipgloss"
 
-// Color palette.
 var (
-	colorAccent    = lipgloss.Color("#6C9CFA")
-	colorSuccess   = lipgloss.Color("#6BCB77")
-	colorWarning   = lipgloss.Color("#FFD93D")
-	colorDim       = lipgloss.Color("#888888")
-	colorBright    = lipgloss.Color("#FFFFFF")
-	colorMuted     = lipgloss.Color("#AAAAAA")
-	colorError     = lipgloss.Color("#FF6B6B")
-	colorSection   = lipgloss.Color("#BB86FC")
-	colorQuality   = lipgloss.Color("#03DAC6")
-	colorQualityBg = lipgloss.Color("#1a1a2e")
-	colorFilterBg  = lipgloss.Color("#1e1e2e")
+	colorAccent   = lipgloss.Color("#7aa2f7")
+	colorError    = lipgloss.Color("#f7768e")
+	colorDim      = lipgloss.Color("#565f89")
+	colorMuted    = lipgloss.Color("#a9b1d6")
+	colorBright   = lipgloss.Color("#c0caf5")
+	colorBorder   = lipgloss.Color("#3b4261")
+	colorPurple   = lipgloss.Color("#9d7cd8")
+	colorCyan     = lipgloss.Color("#7dcfff")
+	colorFilterBg = lipgloss.Color("#16161e")
 )
 
-// Pre-built lipgloss styles.
 var (
-	pageStyle = lipgloss.NewStyle().
-			MarginTop(1).
-			MarginBottom(1)
-
-	titleStyle = lipgloss.NewStyle().
-			Bold(true).
+	headerStyle = lipgloss.NewStyle().
 			Foreground(colorAccent).
-			MarginBottom(1)
-
-	subtitleStyle = lipgloss.NewStyle().
-			Bold(true).
-			Foreground(colorBright).
-			MarginBottom(1)
-
-	normalStyle = lipgloss.NewStyle().
-			Foreground(colorMuted)
+			Bold(true)
 
 	dimStyle = lipgloss.NewStyle().
 			Foreground(colorDim)
 
+	normalStyle = lipgloss.NewStyle().
+			Foreground(colorBright)
+
 	accentStyle = lipgloss.NewStyle().
-			Foreground(colorAccent).
-			Bold(true)
+			Foreground(colorAccent)
 
 	errorStyle = lipgloss.NewStyle().
 			Foreground(colorError).
-			Bold(true).
-			MarginBottom(1)
+			Bold(true)
 
 	helpStyle = lipgloss.NewStyle().
-			Foreground(colorDim).
-			MarginTop(1)
+			Foreground(colorDim)
 
 	sectionStyle = lipgloss.NewStyle().
-			Bold(true).
-			Foreground(colorSection).
-			MarginBottom(1)
-
-	successStyle = lipgloss.NewStyle().
-			Foreground(colorSuccess).
+			Foreground(colorPurple).
 			Bold(true)
 
-	warningStyle = lipgloss.NewStyle().
-			Foreground(colorWarning).
-			Bold(true)
+	itemSelStyle = lipgloss.NewStyle().
+			Foreground(colorAccent)
 
-	qualityBadgeStyle = lipgloss.NewStyle().
-				Bold(true).
-				Foreground(colorQuality).
-				Background(colorQualityBg).
-				Padding(0, 1)
-
-	listStyle = lipgloss.NewStyle().
-			MarginTop(1)
+	itemNormStyle = lipgloss.NewStyle().
+			Foreground(colorMuted)
 
 	spinnerStyle = lipgloss.NewStyle().
 			Foreground(colorAccent)
 
 	filterStyle = lipgloss.NewStyle().
 			Background(colorFilterBg)
+
+	qualityBadgeStyle = lipgloss.NewStyle().
+				Foreground(colorCyan).
+				Bold(true)
 )

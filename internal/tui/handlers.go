@@ -68,7 +68,6 @@ func (m Model) handleResultsKey(key tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-// handleDubbingKey processes key events in the dubbing selection view.
 func (m Model) handleDubbingKey(key tea.KeyMsg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	m.filter, cmd = m.filter.Update(key)
@@ -87,6 +86,14 @@ func (m Model) handleDubbingKey(key tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.filter.SetPlaceholder("Фильтр...")
 			m.filter.SetPrompt("📽 ")
 			m.state = viewEpisodes
+
+			if len(m.episodes) > 0 {
+				urls := make([]string, 0, 3)
+				for i := 0; i < len(m.episodes) && i < 3; i++ {
+					urls = append(urls, kodik.EnsureHTTPS(m.episodes[i].IframeURL))
+				}
+				go m.linkExtractor.Prefetch(m.ctx, urls)
+			}
 			return m, cmd
 		}
 	case "esc":

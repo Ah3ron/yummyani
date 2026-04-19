@@ -1,7 +1,3 @@
-// Package player provides an abstraction over external video players.
-//
-// The [Player] interface allows the TUI layer to launch playback
-// without coupling to a specific player implementation.
 package player
 
 import (
@@ -10,17 +6,14 @@ import (
 	"os/exec"
 )
 
-// Player defines the interface for launching video playback.
 type Player interface {
 	Play(title, videoURL string) error
 }
 
-// MPV launches mpv with optimised flags for HTTP stream playback.
 type MPV struct {
 	Command string
 }
 
-// NewMPV creates an MPV player with the given binary name.
 func NewMPV(command string) *MPV {
 	if command == "" {
 		command = "mpv"
@@ -28,7 +21,6 @@ func NewMPV(command string) *MPV {
 	return &MPV{Command: command}
 }
 
-// Play launches mpv and blocks until it exits.
 func (m *MPV) Play(title, videoURL string) error {
 	cmd := exec.Command(m.Command, buildMPVArgs(title, videoURL)...)
 	cmd.Stdout = os.Stdout
@@ -37,31 +29,22 @@ func (m *MPV) Play(title, videoURL string) error {
 	return cmd.Run()
 }
 
-// buildMPVArgs returns mpv CLI flags optimised for HTTP stream playback.
 func buildMPVArgs(title, videoURL string) []string {
 	return []string{
 		"--title=" + title,
 		"--force-media-title=" + title,
+		"--terminal=no",
 		"--force-seekable=yes",
 		"--http-header-fields=Referer: https://kodikplayer.com/",
 		"--cache=yes",
-		"--demuxer-max-bytes=150M",
-		"--demuxer-max-back-bytes=75M",
-		"--demuxer-readahead-secs=20",
-		"--tls-verify=no",
-		"--network-timeout=20",
-		"--stream-lavf-o=analyzeduration=2000000",
-		"--stream-lavf-o=probesize=5000000",
-		"--demuxer-lavf-o=reconnect=1",
-		"--demuxer-lavf-o=reconnect_streamed=1",
-		"--video-sync=audio",
-		"--framedrop=vo",
-		"--vd-lavc-threads=0",
+		"--demuxer-max-bytes=50M",
+		"--demuxer-max-back-bytes=25M",
+		"--demuxer-readahead-secs=10",
+		"--network-timeout=10",
 		videoURL,
 	}
 }
 
-// LinkType normalises a MIME-type string to a short label.
 func LinkType(typ string) string {
 	switch typ {
 	case "hls", "application/x-mpegURL":
@@ -76,7 +59,6 @@ func LinkType(typ string) string {
 	}
 }
 
-// FormatDuration converts seconds to "M:SS" format.
 func FormatDuration(seconds int) string {
 	return fmt.Sprintf("%d:%02d", seconds/60, seconds%60)
 }

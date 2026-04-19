@@ -12,36 +12,25 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-// --- Async tea messages ---
-
 type searchDoneMsg struct {
 	results []api.SearchResult
 	err     error
 }
-
 type videosDoneMsg struct {
 	videos []api.VideoEntry
 	title  string
 	err    error
 }
-
 type extractDoneMsg struct {
 	resp *kodik.Response
 	err  error
 }
-
 type playDoneMsg struct{ err error }
-
-type errMsg struct{ err error }
-
-func (e errMsg) Error() string { return e.err.Error() }
-
-// --- Async commands ---
 
 func (m Model) doSearch(ctx context.Context, query string) tea.Cmd {
 	return func() tea.Msg {
 		results, err := m.anime.Search(ctx, query, m.searchLimit)
-		return searchDoneMsg{results: results, err: err}
+		return searchDoneMsg{results, err}
 	}
 }
 
@@ -51,12 +40,12 @@ func (m Model) doFetchVideos(ctx context.Context, animeID int) tea.Cmd {
 		if err != nil {
 			return videosDoneMsg{err: err}
 		}
-		info, err := m.anime.GetAnime(ctx, animeID)
-		title := fmt.Sprintf("Anime #%d", animeID)
-		if err == nil && info != nil {
-			title = info.DisplayName()
+		info, _ := m.anime.GetAnime(ctx, animeID)
+		title := info.DisplayName()
+		if title == "" {
+			title = fmt.Sprintf("Anime #%d", animeID)
 		}
-		return videosDoneMsg{videos: videos, title: title}
+		return videosDoneMsg{videos, title, nil}
 	}
 }
 
@@ -64,12 +53,12 @@ func (m Model) doExtract(ctx context.Context, iframeURL string) tea.Cmd {
 	return func() tea.Msg {
 		resp, err := m.linkExtractor.Parse(ctx, iframeURL)
 		if err != nil {
-			return extractDoneMsg{err: fmt.Errorf("kodik parse: %w", err)}
+			return extractDoneMsg{err: fmt.Errorf("ошибка извлечения: %w", err)}
 		}
 		if kodik.BestLink(resp) == "" {
-			return extractDoneMsg{err: fmt.Errorf("no playable links found")}
+			return extractDoneMsg{err: fmt.Errorf("ссылки не найдены")}
 		}
-		return extractDoneMsg{resp: resp}
+		return extractDoneMsg{resp, nil}
 	}
 }
 
@@ -81,8 +70,6 @@ func (m Model) startPlay(title, url, _ string) tea.Cmd {
 		return playDoneMsg{}
 	}
 }
-
-// --- Conversion helpers ---
 
 func searchToItems(results []api.SearchResult) []FilterItem {
 	items := make([]FilterItem, len(results))
@@ -140,7 +127,6 @@ func qualityToItems(qualities []kodik.Quality) []FilterItem {
 	return items
 }
 
-// sortEpisodes sorts episodes by number in ascending order.
 func sortEpisodes(episodes []api.VideoEntry) {
 	sort.Slice(episodes, func(i, j int) bool {
 		return episodes[i].Number < episodes[j].Number

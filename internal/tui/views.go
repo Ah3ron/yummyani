@@ -2,29 +2,48 @@ package tui
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/charmbracelet/lipgloss"
 )
 
-// View renders the current view based on the model's state.
 func (m Model) View() string {
+	inner := m.renderContent()
+	w := m.width
+	h := m.height
+	if w < 40 {
+		w = 40
+	}
+	if h < 15 {
+		h = 15
+	}
+	frameStyle := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(colorBorder).
+		Padding(1, 1).
+		Width(w - 2).
+		Height(h - 2)
+	return frameStyle.Render(inner)
+}
+
+func (m Model) renderContent() string {
 	switch m.state {
 	case viewSearch:
-		return pageStyle.Render(m.viewSearch())
+		return m.viewSearch()
 	case viewResults:
-		return pageStyle.Render(m.viewResults())
+		return m.viewResults()
 	case viewDubbing:
-		return pageStyle.Render(m.viewDubbing())
+		return m.viewDubbing()
 	case viewEpisodes:
-		return pageStyle.Render(m.viewEpisodes())
+		return m.viewEpisodes()
 	case viewQuality:
-		return pageStyle.Render(m.viewQuality())
+		return m.viewQuality()
 	case viewExtracting:
-		return pageStyle.Render(m.viewExtracting())
+		return m.viewExtracting()
 	case viewPlaying:
-		return pageStyle.Render(m.viewPlaying())
+		return m.viewPlaying()
 	case viewError:
-		return pageStyle.Render(m.viewError())
+		return m.viewError()
 	default:
 		return ""
 	}
@@ -32,16 +51,18 @@ func (m Model) View() string {
 
 func (m Model) viewSearch() string {
 	return lipgloss.JoinVertical(lipgloss.Left,
-		titleStyle.Render("🎮 YummyAnime Player"),
-		subtitleStyle.Render("Введите название аниме для поиска:"),
+		lipgloss.JoinHorizontal(lipgloss.Left, accentStyle.Render("◉"), headerStyle.Render(" YummyAnime")),
+		dimStyle.Render(strings.Repeat("─", 24)),
 		m.filter.View(),
-		helpStyle.Render("enter — искать  |  ctrl+c — выход"),
+		m.filter.ViewItems(),
+		helpStyle.Render("enter — поиск  |  ctrl+c — выход"),
 	)
 }
 
 func (m Model) viewResults() string {
 	return lipgloss.JoinVertical(lipgloss.Left,
-		titleStyle.Render(fmt.Sprintf("🔍 Результаты: %s", m.query)),
+		lipgloss.JoinHorizontal(lipgloss.Left, accentStyle.Render("◉"), headerStyle.Render(fmt.Sprintf(" Результаты: %s", m.query))),
+		dimStyle.Render(strings.Repeat("─", 74)),
 		m.filter.View(),
 		m.filter.ViewItems(),
 		helpStyle.Render("↑↓ — навигация  |  enter — выбрать  |  esc — назад"),
@@ -50,8 +71,9 @@ func (m Model) viewResults() string {
 
 func (m Model) viewDubbing() string {
 	return lipgloss.JoinVertical(lipgloss.Left,
-		titleStyle.Render(fmt.Sprintf("🎙 %s — Озвучки", m.animeTitle)),
-		sectionStyle.Render(fmt.Sprintf("Найдено озвучек: %d", len(m.groups))),
+		lipgloss.JoinHorizontal(lipgloss.Left, accentStyle.Render("◉"), headerStyle.Render(fmt.Sprintf(" %s", m.animeTitle))),
+		dimStyle.Render(strings.Repeat("─", 74)),
+		sectionStyle.Render(fmt.Sprintf("Озвучки: %d", len(m.groups))),
 		m.filter.View(),
 		m.filter.ViewItems(),
 		helpStyle.Render("↑↓ — навигация  |  enter — выбрать  |  esc — назад"),
@@ -61,7 +83,9 @@ func (m Model) viewDubbing() string {
 func (m Model) viewEpisodes() string {
 	group := m.selectedGroup()
 	return lipgloss.JoinVertical(lipgloss.Left,
-		titleStyle.Render(fmt.Sprintf("📽 %s [%s]", m.animeTitle, group)),
+		lipgloss.JoinHorizontal(lipgloss.Left, accentStyle.Render("◉"), headerStyle.Render(fmt.Sprintf(" %s", m.animeTitle))),
+		dimStyle.Render(strings.Repeat("─", 74)),
+		sectionStyle.Render(fmt.Sprintf("[%s]  %d серий", group, len(m.episodes))),
 		m.filter.View(),
 		m.filter.ViewItems(),
 		helpStyle.Render("↑↓ — навигация  |  enter — играть  |  esc — назад"),
@@ -72,8 +96,9 @@ func (m Model) viewQuality() string {
 	ep := epAt(m.episodes, m.epIdx)
 	group := m.selectedGroup()
 	return lipgloss.JoinVertical(lipgloss.Left,
-		titleStyle.Render(fmt.Sprintf("🎬 %s — Серия %d [%s]", m.animeTitle, ep.Number, group)),
-		qualityBadgeStyle.Render("Выберите качество видео:"),
+		lipgloss.JoinHorizontal(lipgloss.Left, accentStyle.Render("◉"), headerStyle.Render(fmt.Sprintf(" %s", m.animeTitle))),
+		dimStyle.Render(strings.Repeat("─", 74)),
+		qualityBadgeStyle.Render(fmt.Sprintf("Серия %d  [%s]", ep.Number, group)),
 		m.filter.View(),
 		m.filter.ViewItems(),
 		helpStyle.Render("↑↓ — навигация  |  enter — играть  |  esc — назад"),
@@ -81,11 +106,12 @@ func (m Model) viewQuality() string {
 }
 
 func (m Model) viewExtracting() string {
-	return lipgloss.JoinVertical(lipgloss.Left,
-		titleStyle.Render("⏳ Загрузка"),
-		lipgloss.NewStyle().
-			MarginTop(1).
-			Render(fmt.Sprintf("  %s %s", m.spinner.View(), warningStyle.Render(m.status))),
+	return lipgloss.JoinVertical(lipgloss.Center,
+		lipgloss.NewStyle().Render(
+			lipgloss.JoinHorizontal(lipgloss.Left,
+				spinnerStyle.Render(m.spinner.View()),
+				dimStyle.Render(m.status),
+			)),
 	)
 }
 
@@ -95,22 +121,24 @@ func (m Model) viewPlaying() string {
 	title := fmt.Sprintf("%s — Серия %d [%s]", m.animeTitle, ep.Number, group)
 
 	return lipgloss.JoinVertical(lipgloss.Left,
-		successStyle.Render("▶ Воспроизведение"),
+		lipgloss.JoinHorizontal(lipgloss.Left, accentStyle.Render("▶"), headerStyle.Render(" Воспроизведение")),
+		dimStyle.Render(strings.Repeat("─", 74)),
 		normalStyle.Render(title),
-		dimStyle.Render(m.status),
+		dimStyle.Render("MPV запущен..."),
 		helpStyle.Render("esc — назад"),
 	)
 }
 
 func (m Model) viewError() string {
-	return lipgloss.JoinVertical(lipgloss.Left,
-		errorStyle.Render("✗ Ошибка"),
-		normalStyle.Render(m.err.Error()),
-		helpStyle.Render("enter — назад к поиску  |  esc — выход"),
+	return lipgloss.JoinVertical(lipgloss.Center,
+		lipgloss.NewStyle().MarginTop(6).Render(
+			lipgloss.JoinVertical(lipgloss.Left,
+				errorStyle.Render("✗"),
+				normalStyle.Render(m.err.Error()),
+			)),
 	)
 }
 
-// selectedGroup returns the name of the currently selected dubbing group.
 func (m Model) selectedGroup() string {
 	if m.groupIdx >= 0 && m.groupIdx < len(m.groups) {
 		return m.groups[m.groupIdx].Name

@@ -11,17 +11,18 @@ import (
 	"time"
 )
 
-// AnimeProvider defines the interface for anime data operations.
-// Implementations may be the real HTTP client or a test mock.
+var sharedTransport = &http.Transport{
+	MaxIdleConns:        100,
+	MaxIdleConnsPerHost: 10,
+	IdleConnTimeout:     90 * time.Second,
+}
+
 type AnimeProvider interface {
 	Search(ctx context.Context, query string, limit int) ([]SearchResult, error)
 	GetVideos(ctx context.Context, animeID int) ([]VideoEntry, error)
 	GetAnime(ctx context.Context, animeID int) (*AnimeInfo, error)
 }
 
-// Client is an [AnimeProvider] that communicates with the YummyAnime API.
-//
-// Zero-value is NOT usable; use [NewClient] to create one.
 type Client struct {
 	BaseURL    string
 	AppToken   string
@@ -29,12 +30,12 @@ type Client struct {
 	HTTPClient *http.Client
 }
 
-// NewClient creates a Client with the given base URL and HTTP timeout.
 func NewClient(baseURL string, timeout time.Duration) *Client {
 	return &Client{
 		BaseURL: baseURL,
 		HTTPClient: &http.Client{
-			Timeout: timeout,
+			Transport: sharedTransport,
+			Timeout:   timeout,
 		},
 	}
 }

@@ -146,10 +146,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.handleExtractDone(msg)
 	case playDoneMsg:
 		return m.handlePlayDone(msg)
-	case errMsg:
-		m.err = msg.err
-		m.state = viewError
-		return m, nil
 	}
 
 	// Key handling.
