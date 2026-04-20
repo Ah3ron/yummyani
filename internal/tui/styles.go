@@ -3,15 +3,16 @@ package tui
 import "github.com/charmbracelet/lipgloss"
 
 var (
-	colorAccent   = lipgloss.Color("#7aa2f7")
-	colorError    = lipgloss.Color("#f7768e")
-	colorDim      = lipgloss.Color("#565f89")
-	colorMuted    = lipgloss.Color("#a9b1d6")
-	colorBright   = lipgloss.Color("#c0caf5")
-	colorBorder   = lipgloss.Color("#3b4261")
-	colorPurple   = lipgloss.Color("#9d7cd8")
-	colorCyan     = lipgloss.Color("#7dcfff")
-	colorFilterBg = lipgloss.Color("#16161e")
+	colorAccent     = lipgloss.Color("#7FD4FF")
+	colorBright     = lipgloss.Color("#D9E0EE")
+	colorDim        = lipgloss.Color("#9AA5B1")
+	colorMuted      = lipgloss.Color("#6E7A86")
+	colorPurple     = lipgloss.Color("#A67EE9")
+	colorCyan       = lipgloss.Color("#66E1FF")
+	colorError      = lipgloss.Color("#FF6B6B")
+	colorFilterBg   = lipgloss.Color("#0B1014")
+	colorFilterFg   = lipgloss.Color("#C8D0DA")
+	colorBackground = lipgloss.Color("#07090B")
 )
 
 var (
@@ -48,8 +49,11 @@ var (
 	spinnerStyle = lipgloss.NewStyle().
 			Foreground(colorAccent)
 
-	filterStyle = lipgloss.NewStyle().
-			Background(colorFilterBg)
+	inputStyle = lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(colorDim).
+			Background(colorFilterBg).
+			Foreground(colorFilterFg)
 
 	qualityBadgeStyle = lipgloss.NewStyle().
 				Foreground(colorCyan).

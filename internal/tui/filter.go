@@ -131,9 +131,9 @@ func (f FzfFilter) handleKey(key tea.KeyMsg) (FzfFilter, tea.Cmd) {
 func (f FzfFilter) View() string {
 	input := f.input.View()
 	if f.width > 0 {
-		return filterStyle.Width(f.width).Render(input)
+		return inputStyle.Width(f.width).Render(input)
 	}
-	return filterStyle.Render(input)
+	return inputStyle.Render(input)
 }
 
 func (f FzfFilter) ViewItems() string {
@@ -141,7 +141,7 @@ func (f FzfFilter) ViewItems() string {
 		if len(f.items) == 0 {
 			return ""
 		}
-		return dimStyle.Render("  нет результатов")
+		return "\n" + dimStyle.Render("  нет результатов")
 	}
 
 	maxL := f.maxLines
@@ -150,7 +150,7 @@ func (f FzfFilter) ViewItems() string {
 	}
 
 	offset := 0
-	if f.cursor >= offset+maxL {
+	if f.cursor >= maxL {
 		offset = f.cursor - maxL + 1
 	}
 	if f.cursor < offset {
@@ -161,6 +161,7 @@ func (f FzfFilter) ViewItems() string {
 	numW := max(len(fmt.Sprintf("%d", len(f.items))), 2)
 
 	var b strings.Builder
+	b.WriteString("\n")
 
 	for i := offset; i < end; i++ {
 		item := f.filtered[i]

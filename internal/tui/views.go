@@ -2,7 +2,6 @@ package tui
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/charmbracelet/lipgloss"
 )
@@ -17,13 +16,7 @@ func (m Model) View() string {
 	if h < 15 {
 		h = 15
 	}
-	frameStyle := lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(colorBorder).
-		Padding(1, 1).
-		Width(w - 2).
-		Height(h - 2)
-	return frameStyle.Render(inner)
+	return lipgloss.NewStyle().Width(w - 2).Height(h - 2).Render(inner)
 }
 
 func (m Model) renderContent() string {
@@ -51,44 +44,44 @@ func (m Model) renderContent() string {
 
 func (m Model) viewSearch() string {
 	return lipgloss.JoinVertical(lipgloss.Left,
-		lipgloss.JoinHorizontal(lipgloss.Left, accentStyle.Render("◉"), headerStyle.Render(" YummyAnime")),
-		dimStyle.Render(strings.Repeat("─", 24)),
-		m.filter.View(),
+		renderHeader("◉", " YummyAnime"),
+		sepLine(m.width-4),
+		lipgloss.NewStyle().MarginTop(1).Render(m.filter.View()),
 		m.filter.ViewItems(),
-		helpStyle.Render("enter — поиск  |  ctrl+c — выход"),
+		helpLine("enter — поиск  |  ctrl+c — выход"),
 	)
 }
 
 func (m Model) viewResults() string {
 	return lipgloss.JoinVertical(lipgloss.Left,
-		lipgloss.JoinHorizontal(lipgloss.Left, accentStyle.Render("◉"), headerStyle.Render(fmt.Sprintf(" Результаты: %s", m.query))),
-		dimStyle.Render(strings.Repeat("─", 74)),
-		m.filter.View(),
+		renderHeader("◉", fmt.Sprintf(" Результаты: %s", m.query)),
+		sepLine(m.width-4),
+		lipgloss.NewStyle().MarginTop(1).Render(m.filter.View()),
 		m.filter.ViewItems(),
-		helpStyle.Render("↑↓ — навигация  |  enter — выбрать  |  esc — назад"),
+		helpLine("↑↓ — навигация  |  enter — выбрать  |  esc — назад"),
 	)
 }
 
 func (m Model) viewDubbing() string {
 	return lipgloss.JoinVertical(lipgloss.Left,
-		lipgloss.JoinHorizontal(lipgloss.Left, accentStyle.Render("◉"), headerStyle.Render(fmt.Sprintf(" %s", m.animeTitle))),
-		dimStyle.Render(strings.Repeat("─", 74)),
-		sectionStyle.Render(fmt.Sprintf("Озвучки: %d", len(m.groups))),
-		m.filter.View(),
+		renderHeader("◉", fmt.Sprintf(" %s", m.animeTitle)),
+		sepLine(m.width-4),
+		lipgloss.NewStyle().MarginTop(1).Render(sectionStyle.Render(fmt.Sprintf("Озвучки: %d", len(m.groups)))),
+		lipgloss.NewStyle().MarginTop(1).Render(m.filter.View()),
 		m.filter.ViewItems(),
-		helpStyle.Render("↑↓ — навигация  |  enter — выбрать  |  esc — назад"),
+		helpLine("↑↓ — навигация  |  enter — выбрать  |  esc — назад"),
 	)
 }
 
 func (m Model) viewEpisodes() string {
 	group := m.selectedGroup()
 	return lipgloss.JoinVertical(lipgloss.Left,
-		lipgloss.JoinHorizontal(lipgloss.Left, accentStyle.Render("◉"), headerStyle.Render(fmt.Sprintf(" %s", m.animeTitle))),
-		dimStyle.Render(strings.Repeat("─", 74)),
-		sectionStyle.Render(fmt.Sprintf("[%s]  %d серий", group, len(m.episodes))),
-		m.filter.View(),
+		renderHeader("◉", fmt.Sprintf(" %s", m.animeTitle)),
+		sepLine(m.width-4),
+		lipgloss.NewStyle().MarginTop(1).Render(sectionStyle.Render(fmt.Sprintf("[%s]  %d серий", group, len(m.episodes)))),
+		lipgloss.NewStyle().MarginTop(1).Render(m.filter.View()),
 		m.filter.ViewItems(),
-		helpStyle.Render("↑↓ — навигация  |  enter — играть  |  esc — назад"),
+		helpLine("↑↓ — навигация  |  enter — играть  |  esc — назад"),
 	)
 }
 
@@ -96,22 +89,23 @@ func (m Model) viewQuality() string {
 	ep := epAt(m.episodes, m.epIdx)
 	group := m.selectedGroup()
 	return lipgloss.JoinVertical(lipgloss.Left,
-		lipgloss.JoinHorizontal(lipgloss.Left, accentStyle.Render("◉"), headerStyle.Render(fmt.Sprintf(" %s", m.animeTitle))),
-		dimStyle.Render(strings.Repeat("─", 74)),
-		qualityBadgeStyle.Render(fmt.Sprintf("Серия %d  [%s]", ep.Number, group)),
-		m.filter.View(),
+		renderHeader("◉", fmt.Sprintf(" %s", m.animeTitle)),
+		sepLine(m.width-4),
+		lipgloss.NewStyle().MarginTop(1).Render(qualityBadgeStyle.Render(fmt.Sprintf("Серия %d  [%s]", ep.Number, group))),
+		lipgloss.NewStyle().MarginTop(1).Render(m.filter.View()),
 		m.filter.ViewItems(),
-		helpStyle.Render("↑↓ — навигация  |  enter — играть  |  esc — назад"),
+		helpLine("↑↓ — навигация  |  enter — играть  |  esc — назад"),
 	)
 }
 
 func (m Model) viewExtracting() string {
 	return lipgloss.JoinVertical(lipgloss.Center,
-		lipgloss.NewStyle().Render(
+		lipgloss.NewStyle().MarginTop(5).Render(
 			lipgloss.JoinHorizontal(lipgloss.Left,
 				spinnerStyle.Render(m.spinner.View()),
 				dimStyle.Render(m.status),
-			)),
+			),
+		),
 	)
 }
 
@@ -121,21 +115,22 @@ func (m Model) viewPlaying() string {
 	title := fmt.Sprintf("%s — Серия %d [%s]", m.animeTitle, ep.Number, group)
 
 	return lipgloss.JoinVertical(lipgloss.Left,
-		lipgloss.JoinHorizontal(lipgloss.Left, accentStyle.Render("▶"), headerStyle.Render(" Воспроизведение")),
-		dimStyle.Render(strings.Repeat("─", 74)),
-		normalStyle.Render(title),
+		renderHeader("▶", " Воспроизведение"),
+		sepLine(m.width-4),
+		lipgloss.NewStyle().MarginTop(1).Render(normalStyle.Render(title)),
 		dimStyle.Render("MPV запущен..."),
-		helpStyle.Render("esc — назад"),
+		helpLine("esc — назад"),
 	)
 }
 
 func (m Model) viewError() string {
 	return lipgloss.JoinVertical(lipgloss.Center,
-		lipgloss.NewStyle().MarginTop(6).Render(
+		lipgloss.NewStyle().MarginTop(5).Render(
 			lipgloss.JoinVertical(lipgloss.Left,
 				errorStyle.Render("✗"),
 				normalStyle.Render(m.err.Error()),
-			)),
+			),
+		),
 	)
 }
 

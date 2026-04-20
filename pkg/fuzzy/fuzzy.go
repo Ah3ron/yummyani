@@ -6,16 +6,24 @@
 // It handles multi-byte UTF-8 correctly (Cyrillic, CJK, etc.).
 package fuzzy
 
-// Match reports whether query is a subsequence of text (case-sensitive).
+import "strings"
+
+// Match reports whether query is a subsequence of text (case‑insensitive).
 // Every rune in query must appear in text in the same order, though not
 // necessarily contiguously.
 func Match(query, text string) bool {
-	qr := []rune(query)
+	qr := []rune(strings.ToLower(query))
 	qi := 0
-	for _, r := range text {
+	for _, r := range strings.ToLower(text) {
 		if qi < len(qr) && r == qr[qi] {
 			qi++
 		}
 	}
-	return qi == len(qr)
+	if qi == len(qr) {
+		if len([]rune(query)) == len([]rune(text)) && query != text {
+			return false
+		}
+		return true
+	}
+	return false
 }

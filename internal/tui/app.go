@@ -1,3 +1,4 @@
+// Package tui implements a BubbleTea TUI for YummyAnime.
 package tui
 
 import (
@@ -125,7 +126,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.width = w.Width
 		m.height = w.Height
 		m.filter.SetMaxLines(w.Height - 6)
-		m.filter.SetWidth(w.Width)
+		m.filter.SetWidth(w.Width - 4)
 		return m, nil
 	}
 
